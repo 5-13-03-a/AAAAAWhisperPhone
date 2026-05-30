@@ -323,8 +323,10 @@ function showCtxMenu(bubble){
     var arrow = detailEl.querySelector('#ctxArrow');
 
     if(ctxActiveBubble) ctxActiveBubble.classList.remove('ctx-active');
+    removeRewindBtn();
     ctxActiveBubble = bubble;
     bubble.classList.add('ctx-active');
+    showRewindBtn(bubble);
 
     var bRect  = bubble.getBoundingClientRect();
     var margin = 10;
@@ -375,6 +377,63 @@ function hideCtxMenu(){
     if(wrap) wrap.classList.remove('show');
     if(mask) mask.style.display = 'none';
     if(ctxActiveBubble){ ctxActiveBubble.classList.remove('ctx-active'); ctxActiveBubble = null; }
+    removeRewindBtn();
+}
+
+function showRewindBtn(bubble){
+    var row = bubble.closest('.ca-msg-row');
+    if(!row) return;
+    var btn = document.createElement('div');
+    btn.className = 'ca-rewind-btn';
+    btn.id = 'cdRewindBtn';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>';
+    btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        hideCtxMenu();
+        doRewind(row);
+    });
+    row.appendChild(btn);
+    requestAnimationFrame(function(){ btn.classList.add('show'); });
+}
+
+function removeRewindBtn(){
+    var btn = detailEl ? detailEl.querySelector('#cdRewindBtn') : null;
+    if(btn) btn.parentNode.removeChild(btn);
+}
+
+function doRewind(row){
+    if(!currentId) return;
+    var msgId = row.dataset.msgId;
+    var convs = window._wpChatConvs || {};
+    var msgs = convs[currentId] || [];
+    var msgIdx = msgId ? msgs.findIndex(function(m){ return m.id === msgId; }) : -1;
+    if(msgIdx < 0) return;
+
+    convs[currentId] = msgs.slice(0, msgIdx + 1);
+    window._wpChatConvs = convs;
+    try{ localStorage.setItem('wp_chat_messages', JSON.stringify(convs)); }catch(e){}
+
+    var msgsEl = detailEl.querySelector('#cdMsgs');
+    var allRows = Array.prototype.slice.call(msgsEl.querySelectorAll('.ca-msg-row'));
+    var domIdx = allRows.indexOf(row);
+    if(domIdx >= 0){
+        for(var i = allRows.length - 1; i > domIdx; i--){
+            if(allRows[i].parentNode) allRows[i].parentNode.removeChild(allRows[i]);
+        }
+    }
+    var narLines = msgsEl.querySelectorAll('.cd-narration-center-line');
+    narLines.forEach(function(nl){
+        if(row.compareDocumentPosition(nl) & Node.DOCUMENT_POSITION_FOLLOWING){
+            nl.parentNode.removeChild(nl);
+        }
+    });
+    var sysLines = msgsEl.querySelectorAll('.ca-msg-sys');
+    sysLines.forEach(function(sl){
+        if(row.compareDocumentPosition(sl) & Node.DOCUMENT_POSITION_FOLLOWING){
+            sl.parentNode.removeChild(sl);
+        }
+    });
+    addSysBubble('已回溯到此处');
 }
 
 function handleCtxAction(act){
@@ -738,6 +797,44 @@ function timeNow(){
     return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 
+function getTimeGapLabel(ms){
+    if(ms < 300000) return '';
+    var totalMins = Math.floor(ms / 60000);
+    var h = Math.floor(totalMins / 60);
+    var m = totalMins % 60;
+    if(h > 0){
+        return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+    return '00:' + String(m).padStart(2,'0');
+}
+
+function insertTimeGap(msgsEl){
+    if(!currentId) return;
+    var convs = window._wpChatConvs || {};
+    var msgs = convs[currentId] || [];
+    if(msgs.length === 0) return;
+    var lastMsg = msgs[msgs.length - 1];
+    if(!lastMsg.time) return;
+    var parts = lastMsg.time.split(' ');
+    if(parts.length < 2) return;
+    var dateParts = parts[0].split('-');
+    var timeParts = parts[1].split(':');
+    var lastDate = new Date(
+        parseInt(dateParts[0],10),
+        parseInt(dateParts[1],10) - 1,
+        parseInt(dateParts[2],10),
+        parseInt(timeParts[0],10),
+        parseInt(timeParts[1],10)
+    );
+    var gap = Date.now() - lastDate.getTime();
+    var label = getTimeGapLabel(gap);
+    if(!label) return;
+    var tag = document.createElement('div');
+    tag.className = 'ca-msg-time-gap';
+    tag.textContent = label;
+    msgsEl.appendChild(tag);
+}
+
 function sendMsg(){
     if(!detailEl) return;
     var inp = detailEl.querySelector('#cdInput');
@@ -752,6 +849,10 @@ function sendMsg(){
         if(!window._wpChatConvs) window._wpChatConvs = sFresh;
         else if(currentId && sFresh[currentId]) window._wpChatConvs[currentId] = sFresh[currentId];
     }catch(ee){}
+
+    /* 时间间隔胶囊 */
+    insertTimeGap(msgsEl);
+
     var t = timeNow();
     var d = new Date();
     var fullTime = d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+t;
@@ -1428,19 +1529,53 @@ function invokeAPI(){
     typingRow.className = 'ca-typing-indicator';
     typingRow.id = 'cdTyping';
     typingRow.innerHTML = '<div class="ca-typing-avatar"><img src="'+DEFAULT_AVATAR+'" class="ca-typing-av"></div>'+
-        '<div class="ca-typing-text">正在思考...</div>';
+        '<div class="ca-typing-text">正在思考...</div>'+
+        '<div class="ca-typing-stop" id="cdTypingStop">停止</div>';
     var typingImg = typingRow.querySelector('.ca-typing-av');
     if(typingImg) loadAvatar(c, typingImg);
     msgsEl.appendChild(typingRow);
     msgsEl.scrollTop = msgsEl.scrollHeight;
 
+    /* 调取提醒：随时间变化文字 */
+    var typingStartTime = Date.now();
+    var typingTimer = setInterval(function(){
+        var el = detailEl.querySelector('#cdTyping');
+        if(!el){ clearInterval(typingTimer); return; }
+        var textEl = el.querySelector('.ca-typing-text');
+        if(!textEl) return;
+        var elapsed = Date.now() - typingStartTime;
+        if(elapsed > 120000){
+            textEl.textContent = '对方太笨了，疑似思考不出来，请重试';
+        } else if(elapsed > 90000){
+            textEl.textContent = '等得花都谢了...';
+        } else if(elapsed > 60000){
+            textEl.textContent = '思考得有点久了...';
+        } else if(elapsed > 30000){
+            textEl.textContent = '还在想...稍等一下';
+        }
+    }, 5000);
+
+    /* 急停：用 AbortController */
+    var abortCtrl = new AbortController();
+    var stopBtn = typingRow.querySelector('#cdTypingStop');
+    stopBtn.addEventListener('click', function(){
+        abortCtrl.abort();
+        clearInterval(typingTimer);
+        var el = detailEl.querySelector('#cdTyping');
+        if(el) el.parentNode.removeChild(el);
+        apiBtn.classList.remove('loading');
+        addSysBubble('已手动停止');
+    });
+
     fetch(cfg.url,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
-        body:JSON.stringify({model:cfg.model,messages:apiMsgs})
+        body:JSON.stringify({model:cfg.model,messages:apiMsgs}),
+        signal:abortCtrl.signal
     })
     .then(function(r){return r.json();})
     .then(function(data){
+        clearInterval(typingTimer);
         var el = detailEl.querySelector('#cdTyping');
         if(el) el.parentNode.removeChild(el);
         apiBtn.classList.remove('loading');
@@ -1483,9 +1618,11 @@ function invokeAPI(){
         }
     })
     .catch(function(err){
+        clearInterval(typingTimer);
         var el = detailEl.querySelector('#cdTyping');
         if(el) el.parentNode.removeChild(el);
         apiBtn.classList.remove('loading');
+        if(err.name === 'AbortError') return;
         addSysBubble('请求失败：'+err.message);
     });
 }
@@ -1934,7 +2071,61 @@ function getTimeAwareInject(){
     var min = String(now.getMinutes()).padStart(2,'0');
     var weekDays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
     var week = weekDays[now.getDay()];
-    return '[当前时间]现在是'+y+'年'+mon+'月'+day+'日 '+week+' '+h+':'+min+'。你能感知时间流逝，知道对方什么时候给你发消息，也知道你自己上次回复是什么时候。根据时间自然地调整语气（比如深夜可以困倦，早上可以问早）。';
+
+    var timeText = '[当前时间]现在是'+y+'年'+mon+'月'+day+'日 '+week+' '+h+':'+min+'。';
+
+    /* 计算用户回复间隔 */
+    var convs = window._wpChatConvs || {};
+    var msgs = convs[currentId] || [];
+    var lastAiTime = null;
+    var lastUserTime = null;
+    for(var i = msgs.length - 1; i >= 0; i--){
+        if(!lastUserTime && msgs[i].role === 'user' && msgs[i].time){
+            lastUserTime = msgs[i].time;
+        }
+        if(!lastAiTime && msgs[i].role === 'contact' && msgs[i].time){
+            lastAiTime = msgs[i].time;
+        }
+        if(lastUserTime && lastAiTime) break;
+    }
+
+    var gapHint = '';
+    if(lastAiTime && lastUserTime){
+        var aiDate = parseTimeStr(lastAiTime);
+        var userDate = parseTimeStr(lastUserTime);
+        if(aiDate && userDate && userDate > aiDate){
+            var gapMs = userDate.getTime() - aiDate.getTime();
+            if(gapMs >= 300000){
+                var gapLabel = getTimeGapLabel(gapMs);
+                gapHint = '对方在你上次回复的'+gapLabel+'才回消息。';
+                if(gapMs >= 3600000){
+                    gapHint += '对方隔了很久才回你，你可以自然地表达注意到了这个间隔（比如"怎么才回"、"忙去了？"等，根据你的性格决定反应方式）。';
+                } else if(gapMs >= 300000){
+                    gapHint += '对方回复稍慢，你可以自然感知但不必每次都提。';
+                }
+            }
+        }
+    }
+
+    timeText += '你能感知时间流逝，知道对方什么时候给你发消息，也知道你自己上次回复是什么时候。根据时间自然地调整语气（比如深夜可以困倦，早上可以问早）。';
+    if(gapHint) timeText += gapHint;
+    return timeText;
+}
+
+function parseTimeStr(str){
+    if(!str) return null;
+    var parts = str.split(' ');
+    if(parts.length < 2) return null;
+    var dateParts = parts[0].split('-');
+    var timeParts = parts[1].split(':');
+    if(dateParts.length < 3 || timeParts.length < 2) return null;
+    return new Date(
+        parseInt(dateParts[0],10),
+        parseInt(dateParts[1],10) - 1,
+        parseInt(dateParts[2],10),
+        parseInt(timeParts[0],10),
+        parseInt(timeParts[1],10)
+    );
 }
 
 function getNarrationPromptInject(){

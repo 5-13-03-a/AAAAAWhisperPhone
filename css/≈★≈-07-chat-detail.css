@@ -73,7 +73,7 @@
   display:flex;gap:8px;
   max-width:78%;
   animation:ca-msgIn 0.3s ease;
-  align-items:flex-end;
+  align-items:flex-end;position:relative;
 }
 .ca-msg-row.user{align-self:flex-end;flex-direction:row-reverse;}
 .ca-msg-row.other{align-self:flex-start;}
@@ -829,4 +829,68 @@
 @keyframes cd-loadSpin{
   from{transform:rotate(0deg);}
   to{transform:rotate(360deg);}
+}
+/* ── 调取急停按钮 ── */
+.ca-typing-stop{
+  font-size:10px;font-weight:600;color:#c0c0c0;
+  padding:4px 12px;
+  border-radius:50px;
+  border:0.5px solid rgba(0,0,0,0.08);
+  background:rgba(255,255,255,0.9);
+  cursor:pointer;
+  margin-left:8px;
+  transition:all 0.2s;
+  white-space:nowrap;
+}
+.ca-typing-stop:active{
+  background:rgba(0,0,0,0.05);
+  transform:scale(0.92);
+  color:#999;
+}
+/* ── 时间间隔胶囊 ── */
+.ca-msg-time-gap{
+  align-self:center;
+  font-size:9px;font-weight:700;color:#c0c0c0;
+  letter-spacing:1.5px;padding:3px 12px;
+  background:rgba(0,0,0,0.015);
+  border:0.5px solid rgba(0,0,0,0.04);
+  border-radius:50px;
+  margin:12px 0 6px;
+  animation:ca-msgIn 0.3s ease;
+  font-variant-numeric:tabular-nums;
+  font-family:'SF Mono',Menlo,monospace,-apple-system,sans-serif;
+}
+/* ── 回溯按钮 ── */
+.ca-rewind-btn{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%) scale(0.7);
+  opacity:0;
+  width:26px;height:26px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.95);
+  border:0.5px solid rgba(0,0,0,0.08);
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  z-index:10;
+  transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.ca-msg-row.user .ca-rewind-btn{
+  left:-36px;right:auto;
+}
+.ca-msg-row.other .ca-rewind-btn{
+  right:-36px;left:auto;
+}
+.ca-rewind-btn.show{
+  opacity:1;
+  transform:translateY(-50%) scale(1);
+}
+.ca-rewind-btn:active{
+  transform:translateY(-50%) scale(0.85);
+  background:rgba(0,0,0,0.04);
+}
+.ca-rewind-btn svg{
+  width:14px;height:14px;
+  fill:#b0b0b0;stroke:none;
 }
