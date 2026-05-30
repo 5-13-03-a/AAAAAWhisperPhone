@@ -867,6 +867,8 @@ function insertTimeGap(msgsEl){
     var gap = Date.now() - lastDate.getTime();
     var label = getTimeGapLabel(gap);
     if(!label) return;
+    var oldTag = msgsEl.querySelector('.ca-msg-time-gap');
+    if(oldTag) oldTag.parentNode.removeChild(oldTag);
     var tag = document.createElement('div');
     tag.className = 'ca-msg-time-gap';
     tag.textContent = label;
@@ -1272,7 +1274,6 @@ function openDetail(id){
     msgsEl.style.fontSize = getFontSize(c);
 
     renderMsgs(id);
-    insertTimeGap(msgsEl);
     detailEl.classList.add('active');
     setTimeout(function(){
         msgsEl.scrollTop = msgsEl.scrollHeight;
