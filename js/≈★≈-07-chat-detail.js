@@ -33,11 +33,11 @@
         '.cd-multi-btn{font-size:13px;font-weight:600;padding:8px 18px;border-radius:50px;cursor:pointer;}'+
         '.cd-multi-btn.cancel{background:#f3f3f4;color:#888;}'+
         '.cd-multi-btn.del{background:#3D3D40;color:#fff;}'+
-        '.multi-select-mode .cd-naration-center-line{position:relative;}'+
+        '.multi-select-mode .cd-narration-center-line{position:relative;}'+
         '.multi-select-mode .cd-narration-center-line .ca-msg-mdot{position:absolute;right:-30px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:20px;height:20px;border:none;border-radius:0;background:none;flex-shrink:0;cursor:pointer;transition:all 0.15s;opacity:0.7;z-index:5;}'+
-        '.multi-select-mode .cd-narration-center-line .ca-msg-mdot::before{content:"★";font-size:18px;color:transparent;-webkit-text-stroke:1.5px rgba(0,0,0,0.3);text-stroke:1.5px rgba(0,0,0.3);filter:drop-shadow(0 0 2px rgba(255,255,0.5));transition:all 0.15s;}'+
+        '.multi-select-mode .cd-narration-center-line .ca-msg-mdot::before{content:"★";font-size:18px;color:transparent;-webkit-text-stroke:1.5px rgba(0,0,0,0.3);text-stroke:1.5px rgba(0,0,0,0.3);filter:drop-shadow(0 0 2px rgba(255,255,255,0.5));transition:all 0.15s;}'+
         '.multi-select-mode .cd-narration-center-line.msg-selected .ca-msg-mdot{opacity:1;}'+
-        '.multi-select-mode .cd-narration-center-line.msg-selected .ca-msg-mdot::before{color:rgba(61,64,0.85);-webkit-text-stroke:1.5px rgba(61,61,64,0.9);text-stroke:1.5px rgba(61,61,64,0.9);}';
+        '.multi-select-mode .cd-narration-center-line.msg-selected .ca-msg-mdot::before{color:rgba(61,61,64,0.85);-webkit-text-stroke:1.5px rgba(61,61,64,0.9);text-stroke:1.5px rgba(61,61,64,0.9);}';
     document.head.appendChild(st);
 })();
 
@@ -931,7 +931,7 @@ function renderMsgs(contactId, fromStart){
                     while((mNr = reNr.exec(escSentence)) !== null){
                         var nrRaw = (mNr[1] || mNr[2] || '').trim();
                                 if(nrRaw && nrRaw.length >= 2){
-                html += '<div class="cd-naration-center-line"><span class="cd-narration-text" style="font-size:'+nCfgR.fontSize+';color:'+nCfgR.color+';'+(nCfgR.italic?'font-style:italic;':'')+'">'+nrRaw+'</span></div>';
+                html += '<div class="cd-narration-center-line"><span class="cd-narration-text" style="font-size:'+nCfgR.fontSize+';color:'+nCfgR.color+';'+(nCfgR.italic?'font-style:italic;':'')+'">'+nrRaw+'</span></div>';
                         }
                     }
                 }
@@ -1559,7 +1559,7 @@ function addContactBubble(text){
                 });
                 bubbleHtml = bubbleHtml.trim();
             } else if(active){
-                bubbleHtml = formatNarrationInBuble(safeSentence);
+                bubbleHtml = formatNarrationInBubble(safeSentence);
             }
 
             if(bubbleHtml){
@@ -1693,7 +1693,7 @@ function exitMultiSelect(){
 
 function deleteSelected(){
     var rows = getSelectedRows();
-    var narationLines = getSelectedNarrationLines();
+    var narrationLines = getSelectedNarrationLines();
     if(rows.length === 0 && narrationLines.length === 0){ exitMultiSelect(); return; }
     
     narrationLines.forEach(function(line){
@@ -1881,9 +1881,9 @@ function showNarrationModal(){
             setNarrationActive(false);
             closeNarrationModal();
             renderMsgs(currentId);
-            showNarationNotice(false);
+            showNarrationNotice(false);
         } else {
-            setNarationActive(true);
+            setNarrationActive(true);
             closeNarrationModal();
             renderMsgs(currentId);
             showNarrationNotice(true);
